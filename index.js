@@ -38,6 +38,33 @@ async function joinSlackChannel() {
   );
 }
 
+let firstUpdate = true;
+async function updateSlack() {
+  firstUpdate = false
+
+  const { data } = await axios.post(
+    `https://slack.com/api/conversations.setTopic`,
+    {
+      channel: process.env.SLACK_CHANNEL_ID,
+      topic: `Harvest’s Virtual Office - ${countOnlineUsers()} online!`,
+    },
+    {
+      headers: {
+        Authorization: `Bearer ${process.env.SLACK_ACCESS_TOKEN}`,
+      },
+    }
+  );
+
+  if (data.ok) {
+    console.log("Channel topic updated");
+  } else {
+    console.error("Channel topic NOT updated", data);
+  }
+}
+
+const updateSlackSoon = debounce(updateSlack, 1000 * 15, false);
+const updateSlackLater = debounce(updateSlack, 1000 * 60 * 5, false);
+
 function connectToWS() {
   ws.on("open", function open(data) {
     if (!data) {
@@ -66,32 +93,13 @@ function connectToWS() {
       console.log(`${data.data.name} left`);
     }
 
-    updateSlackSoon();
+    if (firstUpdate) {
+      updateSlackSoon()
+    } else {
+      updateSlackLater()
+    }
   });
 }
-
-async function updateSlack() {
-  const { data } = await axios.post(
-    `https://slack.com/api/conversations.setTopic`,
-    {
-      channel: process.env.SLACK_CHANNEL_ID,
-      topic: `Harvest’s Virtual Office - ${countOnlineUsers()} online!`,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${process.env.SLACK_ACCESS_TOKEN}`,
-      },
-    }
-  );
-
-  if (data.ok) {
-    console.log("Channel topic updated");
-  } else {
-    console.error("Channel topic NOT updated", data);
-  }
-}
-
-const updateSlackSoon = debounce(updateSlack, 15000, false);
 
 joinSlackChannel();
 connectToWS();
