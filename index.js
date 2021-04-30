@@ -78,7 +78,23 @@ async function getSlackChannelInfo() {
   return data.channel;
 }
 
+function numberOfUsersInWords(number) {
+  if (number >= 15) return "Very Busy";
+
+  if (number >= 5) return "Busy";
+
+  if (number >= 3) return "A Few People";
+
+  if (number >= 1) return "A Couple of People";
+
+  return "Empty";
+}
+
 async function updateSlackTopic(newTopic) {
+  if (process.env.DEBUG) {
+    return console.log(`DEBUG enabled, would have updated to ${newTopic}`);
+  }
+
   const { data } = await axios.post(
     `https://slack.com/api/conversations.setTopic`,
     {
@@ -101,7 +117,9 @@ async function updateSlackTopic(newTopic) {
 
 async function updateSlack() {
   const userCount = countOnlineUsers();
-  const newTopic = `Harvest’s Virtual Office - ${countOnlineUsers()} online!`;
+  const newTopic = `Harvest’s Virtual Office - ${numberOfUsersInWords(
+    userCount
+  )}`;
   const existingTopic = (await getSlackChannelInfo())?.topic.value;
 
   if (existingTopic == newTopic) {
@@ -156,4 +174,6 @@ function connectToWS() {
 
 joinSlackChannel();
 connectToWS();
+
+// Kill if stalled
 setTimeout(() => process.exit(), 60 * 1000);
